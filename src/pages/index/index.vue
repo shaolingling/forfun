@@ -1,11 +1,11 @@
 <template>
   <div class="container" @click="clickHandle('test click', $event)">
-     <van-tabs v-model="active">
-          <van-tab title="标签 1">内容 1</van-tab>
-          <van-tab title="标签 2">内容 2</van-tab>
-          <van-tab title="标签 3">内容 3</van-tab>
-          <van-tab title="标签 4">内容 4</van-tab>
-    </van-tabs>
+      <wux-tabs default-current="tab1">
+            <wux-tab key="tab1" title="Tab 1"></wux-tab>
+            <wux-tab key="tab2" title="Tab 2"></wux-tab>
+            <wux-tab key="tab3" title="Tab 3"></wux-tab>
+       </wux-tabs>
+ 
     <!-- <div class="userinfo" @click="bindViewTap">
       <img class="userinfo-avatar" v-if="userInfo.avatarUrl" :src="userInfo.avatarUrl" background-size="cover" />
       <div class="userinfo-nickname">
@@ -29,8 +29,7 @@
 
 <script>
 // import card from '@/components/card'
-import { Tab, Tabs } from "vant";
-Vue.use(Tab).use(Tabs);
+ 
 
 export default {
   data() {
