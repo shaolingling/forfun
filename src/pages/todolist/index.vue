@@ -1,8 +1,32 @@
 <template>
   <div class="container">
-       <a href="/pages/todolist/main" class="counter">去往记事本</a>  
-       <a href="/pages/collect/main" class="counter">去往收藏夹</a>  
-  </div>
+    <div class="tab_top">
+       <wux-icon type="md-create"  size="32"  class="icon_create"/>
+      
+       <input  class="input_val"  v-model.lazy="newVal"  @change="addItem" placeholder="接下去要做什么？"/>
+        <!-- <swiper :current="index" bindchange="onSwiperChange" @change="onSwiperChange">
+              <block v-for="(item, index) in tabs"  :key="item.key">
+                  <swiper-item> -->
+                      <ul class="content">
+                         <li v-for = "(innerItem ,innerIndex) in toDoList" :key="innerItem">
+                              <!-- <input type="checkbox"  v-model="innerItem.done"/> -->
+                              <div class="check_box" :class="innerItem.done ?'checked':''" v-if="!innerItem.done && (key === 'tab2' || key === 'tab1')"  @click="innerItem.done =!innerItem.done"></div>
+                               <wux-icon type="ios-checkmark-circle" v-if="innerItem.done&&  (key === 'tab3' || key === 'tab1')"  @click="innerItem.done =!innerItem.done"/>
+                              <label  :class="innerItem.done ?'line_through':''"          
+                              v-if="key === 'tab1' || (key === 'tab2' && !innerItem.done) ||(key === 'tab3' && innerItem.done)" 
+                               >{{innerItem.val}}</label>
+                          </li>
+                        <!-- <div v-html="item.content"></div> -->
+                      </ul>
+                  <!-- </swiper-item>
+              </block>
+         </swiper> -->
+         <wux-tabs :class="bordered"  auto="false" :current="key" @change="onTabsChange">
+              <block v-for="item in tabs" :key="item.key">
+                  <wux-tab :key="item.key" :title="item.title"></wux-tab>
+              </block>
+        </wux-tabs>
+    </div>
      
  
     <!-- <div class="userinfo" @click="bindViewTap">

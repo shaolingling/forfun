@@ -29,4 +29,7 @@ export default {
   -webkit-transition: width 2s;
   -o-transition: width 2s;
 }
+ul{
+  list-style-type: none;
+}
 </style>

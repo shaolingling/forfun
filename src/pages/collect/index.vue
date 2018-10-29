@@ -1,7 +1,6 @@
 <template>
   <div class="container">
-       <a href="/pages/todolist/main" class="counter">去往记事本</a>  
-       <a href="/pages/collect/main" class="counter">去往收藏夹</a>  
+       收藏夹
   </div>
      
  
