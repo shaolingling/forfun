@@ -171,12 +171,14 @@ export default {
   padding: 0 6vw;
   .content li {
     display: flex;
+    word-break: break-all;
     .check_box {
       width: 50rpx;
       height: 50rpx;
       border: 1rpx solid #ccc;
       margin-right: 20rpx;
       border-radius: 50%;
+      flex-shrink: 0;
     }
     .ios-checkmark-circle{
       margin-right: 20rpx;
