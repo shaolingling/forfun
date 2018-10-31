@@ -121,7 +121,7 @@ export default {
               console.log("上传成功", res);
               this.imgCount++;
       
-          await  wx.cloud.getTempFileURL({
+            wx.cloud.getTempFileURL({
                 fileList: [res.fileID],
                 success: res => {
                   // get temp file URL
