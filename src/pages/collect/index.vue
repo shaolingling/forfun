@@ -2,8 +2,12 @@
   <div class="container">
        收藏夹
       <!-- <wux-upload url="https://www.skyvow.cn/api/common/file" @change="onChange" @success="onSuccess" @fail="onFail" @complete="onComplete"> -->
-         <image :src="imageUrl" v-if="imageUrl" />
-         <div class="add_item" v-else @click="upLoadImg">+添加照片</div>
+         <div class="add_item"  @click="upLoadImg">+添加照片</div>
+         <ul>
+           <li v-for="(item,index) in imageUrls" :key="index">
+               <image :src="item"/>               
+           </li>
+         </ul>
       <!-- </wux-upload> -->
   </div>
      
@@ -36,7 +40,8 @@ import Vue from "vue";
 export default {
   data() {
     return {
-      imgCount:0,
+      imageUrls: [],
+      imgCount: 0,
       newVal: "",
       index: 0,
       key: "tab1",
@@ -58,21 +63,53 @@ export default {
           title: "已完成事情",
           lists: []
         }
-      ]
+      ],
+      photos: "" //云平台数据库里的集合的引用
     };
   },
-  created() {
+  async onReady() {
     wx.cloud.init({
       env: "forfun-3ed578"
     });
+    const forFunDB = wx.cloud.database({
+      env: "forfun-3ed578"
+    });
+    this.photos = forFunDB.collection("photo");
+    await this.photos.get({
+      success: res  => {
+        // res.data 是一个包含集合中有权限访问的所有记录的数据，不超过 20 条
+        console.log(res.data);
+        let fileIdArr = res.data.map(item => item.fileID)
+        this.imgCount = fileIdArr.length
+        console.log(fileIdArr)
+        wx.cloud.getTempFileURL({
+                fileList: fileIdArr,
+                success: res => {
+                  // get temp file URL
+                  console.log(res.fileList);
+                  this.imageUrls = res.fileList.map(item => item.tempFileURL)
+                },
+                fail: err => {
+                  console.log(err);
+                }
+              });
+      }
+    });
+    
+   // let _this = this;
+    // wx.getStorage({
+    //   key: "imageUrls",
+    //   success(res) {
+    //     console.log(res.data);
+    //     _this.imageUrls = JSON.parse(res.data);
+    //   }
+    // });
   },
   methods: {
-    upLoadImg() {
+   async  upLoadImg() {
       // 让用户选择一张图片
       wx.chooseImage({
         success: chooseResult => {
-          console.log(chooseResult)
-          this.imageUrl = chooseResult.tempFilePaths[0]
           // 将图片上传至云存储空间
           wx.cloud.uploadFile({
             // 指定上传到的云路径
@@ -82,7 +119,34 @@ export default {
             // 成功回调
             success: res => {
               console.log("上传成功", res);
-              this.imgCount++
+              this.imgCount++;
+      
+          await  wx.cloud.getTempFileURL({
+                fileList: [res.fileID],
+                success: res => {
+                  // get temp file URL
+                  console.log(res.fileList);
+                  this.imageUrls.unshift(res.fileList[0].tempFileURL);
+                  
+                  // wx.setStorage({
+                  //   key: "imageUrls",
+                  //   data: JSON.stringify(this.imageUrls)
+                  // });
+                },
+                fail: err => {
+                  console.log(err);
+                }
+              });
+              this.photos.add({
+                // data 字段表示需新增的 JSON 数据
+                data: {
+                  fileID: res.fileID
+                },
+                success: res => {
+                  // res 是一个对象，其中有 _id 字段标记刚创建的记录的 id
+                  console.log(res);
+                }
+              });
             }
           });
         }
