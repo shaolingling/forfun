@@ -1,7 +1,10 @@
 {
   "navigationBarTitleText": "Upload",
   "usingComponents": {
-      "wux-upload": "../../../static/wux/upload/index" 
+      "wux-upload": "../../../static/wux/upload/index" ,
+      "wux-white-space": "../../../static/wux/white-space/index",
+      "wux-button": "../../../static/wux/button/index",
+      "wux-progress": "../../../static/wux/progress/index"
   }
 }
   

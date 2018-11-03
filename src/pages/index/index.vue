@@ -59,6 +59,7 @@ export default {
   },
 
   methods: {
+    
     addItem() {
       this.toDoList.push({ val: this.newVal, done: false });
       this.newVal = "";
