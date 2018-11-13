@@ -1,40 +1,19 @@
 <template>
-  <div class="collection_box">
-       收藏夹
-      <!-- <wux-upload url="https://www.skyvow.cn/api/common/file" @change="onChange" @success="onSuccess" @fail="onFail" @complete="onComplete"> -->
-         <div class="add_item"  @click="chooseImage">+添加照片</div>
-         <ul>
-           <li v-for="(item,index) in imgInfos" :key="index" class="image_item">
-             <div class="image_item">
-                 <image :src="item.src" @click="previewImage(item.src)"/>  
-             </div>
-              <wux-progress    :backgroundColor="'#000'" :activeColor="'#11c1f3'"        :percent="item.progress"/>  
-              <!-- <div v-else>已经上传</div>          -->
-           </li>
-         </ul>
-      <!-- </wux-upload> -->
+  <div class="container">
+    <div class="tab_top">
+       <wux-icon type="md-create"  size="32"  class="icon_create"/>
+      
+       <input  class="input_val"  v-model.lazy="newVal"  @change="addItem" placeholder="接下去要做什么？"/> 
+         <ul class="content">
+             <li v-for = "(innerItem ,index) in toDoList" :key ="index">
+                              <div class="check_box" :class="innerItem.done ?'checked':''"   @click="innerItem.done =!innerItem.done" v-if="!innerItem.done"></div>
+                               <wux-icon type="ios-checkmark-circle"  @click="innerItem.done =!innerItem.done" v-else/>
+                              <a  href="/pages/task/main?id=index"  :class="innerItem.done ?'line_through':''"          
+                               >{{innerItem.val}}</a>
+             </li>                
+        </ul>
+    </div>
   </div>
-     
- 
-    <!-- <div class="userinfo" @click="bindViewTap">
-      <img class="userinfo-avatar" v-if="userInfo.avatarUrl" :src="userInfo.avatarUrl" background-size="cover" />
-      <div class="userinfo-nickname">
-        <card :text="userInfo.nickName"></card>
-      </div>
-    </div>
-
-    <div class="usermotto">
-      <div class="user-motto">
-        <card :text="motto"></card>
-      </div>
-    </div>
-
-    <form class="form-container">
-      <input type="text" class="form-control" v-model="motto" placeholder="v-model" />
-      <input type="text" class="form-control" v-model.lazy="motto" placeholder="v-model.lazy" />
-    </form>
-    <a href="/pages/counter/main" class="counter">去往Vuex示例页面</a> -->
-  
 </template>
 
 <script>
@@ -44,9 +23,7 @@ import Vue from "vue";
 export default {
   data() {
     return {
-      imgInfos: [],
-     // imageUrls: [],
-      imgCount: 0,
+      collection:'',//数据库表名称，如工作，电影
       newVal: "",
       index: 0,
       key: "tab1",
@@ -68,11 +45,51 @@ export default {
           title: "已完成事情",
           lists: []
         }
-      ],
-      photos: "" //云平台数据库里的集合的引用
+      ]
     };
   },
-  async onReady() {
+
+  methods: {
+    addItem() {
+      if(!this.newVal.trim()) return;
+      this.toDoList.push({ val: this.newVal, done: false });
+      this.collection.add({
+        // data 字段表示需新增的 JSON 数据
+        data: {
+          timeStamp: Date.now(),
+          val: this.newVal, 
+          done: false
+        },
+        success: res => {
+          // res 是一个对象，其中有 _id 字段标记刚创建的记录的 id
+          console.log(res);
+        },
+      });
+      this.newVal = "";
+    },
+ 
+    getUserInfo() {
+      // 调用登录接口
+      wx.login({
+        success: () => {
+          wx.getUserInfo({
+            success: res => {
+              this.userInfo = res.userInfo;
+            }
+          });
+        }
+      });
+    },
+  
+  
+  },
+
+  created() {
+    // 调用应用实例的方法获取全局数据
+    this.getUserInfo();
+  },
+  onLoad: function(option){
+    console.log(option.id)
     wx.cloud.init({
       env: "forfun-3ed578",
       traceUser: true
@@ -80,156 +97,100 @@ export default {
     const forFunDB = wx.cloud.database({
       env: "forfun-3ed578"
     });
-    this.photos = forFunDB.collection("photo");
-    await this.photos.get({
-      success: res => {
-        // res.data 是一个包含集合中有权限访问的所有记录的数据，不超过 20 条
-        console.log(res.data);
-        let fileIdArr = res.data.map(item => item.fileID);
-        this.imgCount = fileIdArr.length;
-        console.log(fileIdArr);
-        this.getTempFileURL(fileIdArr);
-      }
-    });
-    wx.cloud.callFunction({
-      // 云函数名称
-      name: "add",
-      // 传给云函数的参数
-      data: {
-        a: 100,
-        b: 200
-      },
-      success: function(res) {
-        console.log("云函数", res.result); // 3
-      },
-      fail: console.error
-    });
-  },
-  methods: {
-    chooseImage() {
-      //这里是选取图片的方法
-      wx.chooseImage({
-        //count: 9 - pics.length, // 最多可以选择的图片张数，默认9
-        sizeType: ["original", "compressed"], // original 原图，compressed 压缩图，默认二者都有
-        sourceType: ["album", "camera"], // album 从相册选图，camera 使用相机，默认二者都有
-        success: res => {
-          let imgsrc = res.tempFilePaths;
-          let imgInfosAdd = imgsrc.map(item => ({
-            src: item,
-            progress: 0
-          }))
-       //   this.imageUrls.unshift(...imgsrc);
-          this.imgInfos.unshift(...imgInfosAdd);
-          //这里触发图片上传的方法
-          this.uploadimg({
-            path: imgInfosAdd //这里是选取的图片的地址数组和上传进度，不止一张图片
-          });
-        },
-        fail: function() {
-          // fail
-        },
-        complete: function() {
-          // complete
-        }
-      });
-    },
-
-    //多张图片上传
-    uploadimg(data) {
-      let that = this,
-        i = data.i ? data.i : 0, //当前上传的哪张图片
-        success = data.success ? data.success : 0, //上传成功的个数
-        fail = data.fail ? data.fail : 0; //上传失败的个数
-      let uploadTask = wx.cloud.uploadFile({
-        // url: data.url,
-        filePath: data.path[i].src,
-        cloudPath: "collection/imgs/" + Math.random(),
-        // name: "file", //这里根据自己的实际情况改
-        // formData: null, //这里是上传图片时一起上传的数据
-        success: resp => {
-          //console.log(uploadTask.onProgressUpdate())
-          success++; //图片上传成功，图片上传成功的变量+1
-          console.log(resp);
-          console.log("上传成功");
-          //  this.getTempFileURL(resp.fileID);
-          this.addPhoto(resp.fileID);
-          //这里可能有BUG，失败也会执行这里,所以这里应该是后台返回过来的状态码为成功时，这里的success才+1
-        },
-        fail: res => {
-          fail++; //图片上传失败，图片上传失败的变量+1
-          console.log("fail:" + i + "fail:" + fail);
-        },
-        complete: () => {
-          console.log(i);
-          i++; //这个图片执行完上传后，开始上传下一张
-          if (i == data.path.length) {
-            //当图片传完时，停止调用
-            console.log("执行完毕");
-            console.log("成功：" + success + " 失败：" + fail);
-          } else {
-            //若图片还没有传完，则继续调用函数
-            console.log(i);
-            data.i = i;
-            data.success = success;
-            data.fail = fail;
-            that.uploadimg(data);
-          }
-        }
-      });
-      uploadTask.onProgressUpdate(res => {
-        console.log("上传进度", res.progress);
-        data.path[i].progress = res.progress
-        console.log("已经上传的数据长度", res.totalBytesSent);
-        console.log("预期需要上传的数据总长度", res.totalBytesExpectedToSend);
-      });
-    },
-    getTempFileURL(fileIDs) {
-      wx.cloud.getTempFileURL({
-        fileList: fileIDs,
-        success: res => {
-          // get temp file URL
-          console.log(res.fileList);
-       //   this.imageUrls.unshift(...res.fileList.map(item => item.tempFileURL));
-          this.imgInfos.unshift(...res.fileList.map(item => ({
-             src:item.tempFileURL,
-             progress:100
-          })));
-          
-        },
-        fail: err => {
-          console.log(err);
-        }
-      });
-    },
-    //将文件添加到数据库
-    addPhoto(fileID) {
-      this.photos.add({
-        // data 字段表示需新增的 JSON 数据
-        data: {
-          fileID: fileID
-        },
-        success: res => {
-          // res 是一个对象，其中有 _id 字段标记刚创建的记录的 id
-          console.log(res);
-        }
-      });
-    },
-    previewImage(url) {
-      wx.previewImage({
-        current: url, // 当前显示图片的http链接
-        urls: [url] // 需要预览的图片http链接列表
-      });
-    }
+    this.collection = forFunDB.collection(option.id);
   }
 };
 </script>
 
 <style scoped lang="scss">
-.collection_box {
-  .image_item {
-    // height: 200rpx;
-    overflow: hidden;
-    text-align: center;
+.userinfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.userinfo-avatar {
+  width: 128rpx;
+  height: 128rpx;
+  margin: 20rpx;
+  border-radius: 50%;
+}
+
+.userinfo-nickname {
+  color: #aaa;
+}
+
+.usermotto {
+  margin-top: 150px;
+}
+
+.form-control {
+  display: block;
+  padding: 0 12px;
+  margin-bottom: 5px;
+  border: 1px solid #ccc;
+}
+
+.counter {
+  display: inline-block;
+  margin: 10px auto;
+  padding: 5px 10px;
+  color: blue;
+  border: 1px solid blue;
+}
+.container {
+  width: 100vw;
+  padding: 0 6vw;
+  .content li {
+    display: flex;
+    word-break: break-all;
+    .check_box {
+      width: 50rpx;
+      height: 50rpx;
+      border: 1rpx solid #ccc;
+      margin-right: 20rpx;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .ios-checkmark-circle {
+      margin-right: 20rpx;
+    }
+  }
+
+  .tab_top {
+    width: 100%;
+  }
+  swiper {
+    height: 80vh;
+  }
+  ._wux-tabs {
+    position: fixed;
+    bottom: 0;
+    .wux-tabs {
+      display: flex;
+    }
+  }
+  ._wux-tab {
+    width: 220rpx;
+  }
+  .wux-tabs__tab--current {
+    background-color: #33cd5f;
+    color: #fff;
+  }
+  .input_val {
+    height: 6vh;
+    border: 1px solid #eee;
+    border-radius: 3vh;
+    padding-left: 10vw;
+  }
+  .icon_create {
+    position: relative;
+    top: 6vh;
+    left: 3vw;
+  }
+  .line_through {
+    text-decoration: line-through;
   }
 }
 </style>
+

@@ -1,29 +1,10 @@
 <template>
   <div class="container">
-       <a href="/pages/todolist/main" class="counter">去往记事本</a>  
-       <a href="/pages/collect/main" class="counter">去往收藏夹</a>  
+       <!-- <a href="/pages/todolist/main" class="counter">去往记事本</a>   -->
+       <a href="/pages/collect/main?id=work" class="counter">工作</a>  
+       <a href="/pages/collect/main?id=movie" class="counter">电影</a>  
+
   </div>
-     
- 
-    <!-- <div class="userinfo" @click="bindViewTap">
-      <img class="userinfo-avatar" v-if="userInfo.avatarUrl" :src="userInfo.avatarUrl" background-size="cover" />
-      <div class="userinfo-nickname">
-        <card :text="userInfo.nickName"></card>
-      </div>
-    </div>
-
-    <div class="usermotto">
-      <div class="user-motto">
-        <card :text="motto"></card>
-      </div>
-    </div>
-
-    <form class="form-container">
-      <input type="text" class="form-control" v-model="motto" placeholder="v-model" />
-      <input type="text" class="form-control" v-model.lazy="motto" placeholder="v-model.lazy" />
-    </form>
-    <a href="/pages/counter/main" class="counter">去往Vuex示例页面</a> -->
- 
 </template>
 
 <script>

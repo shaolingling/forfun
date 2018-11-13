@@ -1,10 +1,12 @@
-{
-  "navigationBarTitleText": "Upload",
-  "usingComponents": {
-      "wux-upload": "../../../static/wux/upload/index" ,
-      "wux-white-space": "../../../static/wux/white-space/index",
-      "wux-button": "../../../static/wux/button/index",
-      "wux-progress": "../../../static/wux/progress/index"
+{  
+  "usingComponents": {    
+    "i-button": "../../../static/iview/button/index",
+    "van-button": "../../../static/vant/button/index",
+    "wux-button": "../../../static/wux/button/index",
+    "wux-tabs": "../../../static/wux/tabs/index",
+    "wux-tab": "../../../static/wux/tab/index",
+    "wux-badge": "../../../static/wux/badge/index",
+    "wux-icon": "../../../static/wux/icon/index"
   }
 }
   
