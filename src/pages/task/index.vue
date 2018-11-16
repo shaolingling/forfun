@@ -1,13 +1,13 @@
 <template>
   <div class="collection_box">
       <!-- <wux-upload url="https://www.skyvow.cn/api/common/file" @change="onChange" @success="onSuccess" @fail="onFail" @complete="onComplete"> -->
-         <div>添加备注</div>
-         <textarea @confirm = "addRemark" @blur="addwork"></textarea>
+         <div>+添加备注</div>
+         <textarea   @blur = "addRemark" v-model="remark"></textarea>
          <div class="add_item"  @click="chooseImage">+添加照片</div>
          <ul>
            <li v-for="(item,index) in imgInfos" :key="index" class="image_item">
               <image :src="item.src" @click="previewImage(item.src)"/>   
-              <wux-progress  v-if= "item.progress<100"  bar-style="border:1px solid #ccc"   active-color="#ddd"          :percent="item.progress"  class = "progress_item" />  
+              <wux-progress  v-if= "item.progress<100"  bar-style="border:1px solid #ccc"   active-color="#ddd"   :percent="item.progress"  class = "progress_item" />  
               <!-- <div v-else>已经上传</div>          -->
            </li>
          </ul>
@@ -38,13 +38,12 @@
 
 <script>
 // import card from '@/components/card'
-
 import Vue from "vue";
 export default {
   data() {
     return {
       imgInfos: [],
-     // imageUrls: [],
+      // imageUrls: [],
       imgCount: 0,
       newVal: "",
       index: 0,
@@ -68,10 +67,17 @@ export default {
           lists: []
         }
       ],
-      works: "" //云平台数据库里的集合的引用
+      works: "" ,//云平台数据库里的集合的引用
+      taskId:"",
+      forFunDB:null,
+      remark:''
     };
   },
-  async onReady() {
+  onLoad: function(option) {
+    console.log(option);
+    console.log(option.id);
+    console.log(option.collectionId);
+    this.taskId = option.id
     wx.cloud.init({
       env: "forfun-3ed578",
       traceUser: true
@@ -79,29 +85,18 @@ export default {
     const forFunDB = wx.cloud.database({
       env: "forfun-3ed578"
     });
-    this.works = forFunDB.collection("work");
-    await this.works.get({
+    this.forFunDB = forFunDB
+    this.collection = forFunDB.collection(option.collectionId);
+    this.collection.doc(option.id).get({
       success: res => {
         // res.data 是一个包含集合中有权限访问的所有记录的数据，不超过 20 条
         console.log(res.data);
-        let fileIdArr = res.data.map(item => item.fileID);
-        this.imgCount = fileIdArr.length;
-        console.log(fileIdArr);
-        this.getTempFileURL(fileIdArr);
+        if(res.data){
+           this.remark = res.data.remark
+           let photosIdArr = res.data.photos || []
+           this.getTempFileURL(photosIdArr)
+        }
       }
-    });
-    wx.cloud.callFunction({
-      // 云函数名称
-      name: "add",
-      // 传给云函数的参数
-      data: {
-        a: 100,
-        b: 200
-      },
-      success: function(res) {
-        console.log("云函数", res.result); // 3
-      },
-      fail: console.error
     });
   },
   methods: {
@@ -116,8 +111,8 @@ export default {
           let imgInfosAdd = imgsrc.map(item => ({
             src: item,
             progress: 0
-          }))
-       //   this.imageUrls.unshift(...imgsrc);
+          }));
+          //   this.imageUrls.unshift(...imgsrc);
           this.imgInfos.unshift(...imgInfosAdd);
           //这里触发图片上传的方法
           this.uploadimg({
@@ -150,8 +145,7 @@ export default {
           success++; //图片上传成功，图片上传成功的变量+1
           console.log(resp);
           console.log("上传成功");
-          //  this.getTempFileURL(resp.fileID);
-          this.addwork(resp.fileID);
+          this.addTaskDetail(undefined,resp.fileID);
           //这里可能有BUG，失败也会执行这里,所以这里应该是后台返回过来的状态码为成功时，这里的success才+1
         },
         fail: res => {
@@ -177,7 +171,7 @@ export default {
       });
       uploadTask.onProgressUpdate(res => {
         console.log("上传进度", res.progress);
-        data.path[i].progress = res.progress
+        data.path[i].progress = res.progress;
         console.log("已经上传的数据长度", res.totalBytesSent);
         console.log("预期需要上传的数据总长度", res.totalBytesExpectedToSend);
       });
@@ -188,12 +182,11 @@ export default {
         success: res => {
           // get temp file URL
           console.log(res.fileList);
-       //   this.imageUrls.unshift(...res.fileList.map(item => item.tempFileURL));
-          this.imgInfos.unshift(...res.fileList.map(item => ({
-             src:item.tempFileURL,
-             progress:100
-          })));
-          
+          this.imgInfos = 
+            res.fileList.map(item => ({
+              src: item.tempFileURL,
+              progress: 100
+            })) 
         },
         fail: err => {
           console.log(err);
@@ -201,18 +194,38 @@ export default {
       });
     },
     //将文件添加到数据库
-    addwork(fileID) {
-      this.works.add({
-        // data 字段表示需新增的 JSON 数据
-        data: {
-          timeStamp: Date.now(),
-          fileID: fileID ? fileID :''
+    addTaskDetail(remark ="", photoId ="") {
+      console.log(remark)
+      console.log(this.taskId)
+      const _ = this.forFunDB.command 
+      let data = null
+      if(remark && !photoId){
+         data  = {
+          remark: remark,      
+        }
+      }
+      if(!remark && photoId){
+         data  = {
+          photos: _.push(photoId)    
+        }
+      }
+      if(remark && photoId){
+         data  = {
+          remark: remark,
+          photos: _.push(photoId)    
+        }
+      }
+      this.collection.doc(this.taskId).update({
+        // data 传入需要局部更新的数据
+        data: data,
+        success: function(res) {
+          console.log(res.data);
         },
-        success: res => {
-          // res 是一个对象，其中有 _id 字段标记刚创建的记录的 id
+        fail: function(res) {
           console.log(res);
-        },
+        }
       });
+      
     },
     previewImage(url) {
       wx.previewImage({
@@ -220,8 +233,10 @@ export default {
         urls: [url] // 需要预览的图片http链接列表
       });
     },
-    addRemark(event){
-      console.log(event.mp.detail.value)
+    addRemark() {
+      // console.log(event.mp.detail.value);
+      // let remark = event.mp.detail.value
+      this.addTaskDetail(this.remark)
     }
   }
 };
@@ -235,16 +250,16 @@ export default {
     text-align: center;
     position: relative;
     padding: 20rpx 0;
-    width:80%;
-    image{
-      width:100%;
+    width: 80%;
+    image {
+      width: 100%;
       border-radius: 6rpx;
     }
-    .progress_item{
+    .progress_item {
       position: absolute;
-      bottom:20rpx;
-      left:10%;
-      width:80%;
+      bottom: 20rpx;
+      left: 10%;
+      width: 80%;
     }
   }
 }

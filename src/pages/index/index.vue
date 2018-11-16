@@ -1,9 +1,14 @@
 <template>
   <div class="container">
-       <!-- <a href="/pages/todolist/main" class="counter">去往记事本</a>   -->
        <a href="/pages/collect/main?id=work" class="counter">工作</a>  
-       <a href="/pages/collect/main?id=movie" class="counter">电影</a>  
-
+       <a href="/pages/collect/main?id=movie" class="counter">电影</a> 
+       <ul>
+          <li v-for = "(item,index) in collectionList" :key = "index"  @click="toList(index)"  >  {{item}}  
+          </li>
+       </ul>
+      
+       <div @click="showInput = true">+创建分类</div>
+       <input  v-if="showInput" class="input_val"  v-model.lazy="newVal"  @change="addListItem" placeholder="接下去要做什么？"/> 
   </div>
 </template>
 
@@ -14,11 +19,12 @@ import Vue from "vue";
 export default {
   data() {
     return {
+      showInput:false,
       newVal: "",
       index: 0,
       key: "tab1",
       current: "tab1",
-      toDoList:[],
+      collectionList:[],
       tabs: [
         {
           key: "tab1",
@@ -40,10 +46,15 @@ export default {
   },
 
   methods: {
-    
-    addItem() {
-      this.toDoList.push({ val: this.newVal, done: false });
+    toList(index) {
+      wx.navigateTo({
+        url: "../collect/main?id=" + index 
+      });
+    },
+    addListItem() {
+      this.collectionList.push(this.newVal);
       this.newVal = "";
+      this.showInput = false
     },
     
     bindViewTap() {

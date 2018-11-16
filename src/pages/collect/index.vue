@@ -5,11 +5,11 @@
       
        <input  class="input_val"  v-model.lazy="newVal"  @change="addItem" placeholder="接下去要做什么？"/> 
          <ul class="content">
-             <li v-for = "(innerItem ,index) in toDoList" :key ="index">
-                              <div class="check_box" :class="innerItem.done ?'checked':''"   @click="innerItem.done =!innerItem.done" v-if="!innerItem.done"></div>
-                               <wux-icon type="ios-checkmark-circle"  @click="innerItem.done =!innerItem.done" v-else/>
-                              <a  href="/pages/task/main?id=index"  :class="innerItem.done ?'line_through':''"          
-                               >{{innerItem.val}}</a>
+             <li v-for = "(item ,index) in toDoList" :key ="index">
+                              <div class="check_box" :class="item.done ?'checked':''"   @click="doneChange(item)" v-if="!item.done"></div>
+                               <wux-icon type="ios-checkmark-circle"  @click="doneChange(item)" v-else/>
+                              <div  @click="toTaskDetail(item._id,collectionId)"    :class="item.done ?'line_through':''"          
+                               >{{item.val}}</div>
              </li>                
         </ul>
     </div>
@@ -23,7 +23,8 @@ import Vue from "vue";
 export default {
   data() {
     return {
-      collection:'',//数据库表名称，如工作，电影
+      collection: "", //数据库表名称，如工作，电影
+      collectionId:'',
       newVal: "",
       index: 0,
       key: "tab1",
@@ -50,24 +51,52 @@ export default {
   },
 
   methods: {
-    addItem() {
-      if(!this.newVal.trim()) return;
+    toTaskDetail(id, collectionId) {
+      console.log(id, collectionId)
+      wx.navigateTo({
+        url: "../task/main?id=" + id +"&collectionId=" + collectionId
+      });
+    },
+    doneChange(item) {
+      item.done = !item.done;
+      this.collection.doc(item["_id"]).update({
+        // data 传入需要局部更新的数据
+        data: {
+          // 表示将 done 字段置为 true
+          done: item.done
+        },
+        success: function(res) {
+          console.log(res.data);
+        }
+      });
+    },
+    async addItem() {
+      if (!this.newVal.trim()) return;
       this.toDoList.push({ val: this.newVal, done: false });
-      this.collection.add({
+      await this.collection.add({
         // data 字段表示需新增的 JSON 数据
         data: {
           timeStamp: Date.now(),
-          val: this.newVal, 
-          done: false
+          val: this.newVal,
+          done: false,
+          remark: "",
+          photos: []
         },
         success: res => {
           // res 是一个对象，其中有 _id 字段标记刚创建的记录的 id
           console.log(res);
-        },
+        }
+      });
+      await this.collection.get({
+        success: res => {
+          // res.data 是一个包含集合中有权限访问的所有记录的数据，不超过 20 条
+          console.log(res.data);
+          this.toDoList = res.data;
+        }
       });
       this.newVal = "";
     },
- 
+
     getUserInfo() {
       // 调用登录接口
       wx.login({
@@ -79,17 +108,16 @@ export default {
           });
         }
       });
-    },
-  
-  
+    }
   },
 
   created() {
     // 调用应用实例的方法获取全局数据
     this.getUserInfo();
   },
-  onLoad: function(option){
-    console.log(option.id)
+  onLoad: function(option) {
+    console.log(option.id);
+    this.collectionId = option.id
     wx.cloud.init({
       env: "forfun-3ed578",
       traceUser: true
@@ -98,6 +126,13 @@ export default {
       env: "forfun-3ed578"
     });
     this.collection = forFunDB.collection(option.id);
+    this.collection.get({
+      success: res => {
+        // res.data 是一个包含集合中有权限访问的所有记录的数据，不超过 20 条
+        console.log(res.data);
+        this.toDoList = res.data;
+      }
+    });
   }
 };
 </script>
