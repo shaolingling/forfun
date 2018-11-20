@@ -11,6 +11,14 @@
               <!-- <div v-else>已经上传</div>          -->
            </li>
          </ul>
+          <button @click="voiceToggle" class='btn'>录音按钮</button>
+          <div v-if="notStartVoice">点击按钮，开始录音</div>
+          <div v-else>正在录音中...,点击按钮，停止录音</div>
+          <div>录音上传中...</div>
+          <div>上传完毕</div>
+
+          <!-- <button @click="stopVoice" class='btn'>停止录音</button> -->
+          <!-- <button @click="playVoice" class='btn'>播放录音</button> -->
       <!-- </wux-upload> -->
   </div>
      
@@ -42,6 +50,9 @@ import Vue from "vue";
 export default {
   data() {
     return {
+      tempVoicePath: "",
+      notStartVoice: true,
+      recorderManager: null,
       imgInfos: [],
       // imageUrls: [],
       imgCount: 0,
@@ -67,17 +78,17 @@ export default {
           lists: []
         }
       ],
-      works: "" ,//云平台数据库里的集合的引用
-      taskId:"",
-      forFunDB:null,
-      remark:''
+      works: "", //云平台数据库里的集合的引用
+      taskId: "",
+      forFunDB: null,
+      remark: ""
     };
   },
   onLoad: function(option) {
     console.log(option);
     console.log(option.id);
     console.log(option.collectionId);
-    this.taskId = option.id
+    this.taskId = option.id;
     wx.cloud.init({
       env: "forfun-3ed578",
       traceUser: true
@@ -85,19 +96,21 @@ export default {
     const forFunDB = wx.cloud.database({
       env: "forfun-3ed578"
     });
-    this.forFunDB = forFunDB
+    this.forFunDB = forFunDB;
     this.collection = forFunDB.collection(option.collectionId);
     this.collection.doc(option.id).get({
       success: res => {
         // res.data 是一个包含集合中有权限访问的所有记录的数据，不超过 20 条
         console.log(res.data);
-        if(res.data){
-           this.remark = res.data.remark
-           let photosIdArr = res.data.photos || []
-           this.getTempFileURL(photosIdArr)
+        if (res.data) {
+          this.remark = res.data.remark;
+          let photosIdArr = res.data.photos || [];
+          this.getTempFileURL(photosIdArr);
         }
       }
     });
+    this.recorderManager = wx.getRecorderManager();
+    this.innerAudioContext = wx.createInnerAudioContext();
   },
   methods: {
     chooseImage() {
@@ -127,7 +140,70 @@ export default {
         }
       });
     },
-
+    uploadFile(tempPath) {
+      wx.cloud.uploadFile({
+        // url: data.url,
+        filePath: tempPath,
+        cloudPath: "collection/voice/" + Math.random(),
+        // name: "file", //这里根据自己的实际情况改
+        // formData: null, //这里是上传图片时一起上传的数据
+        success: resp => {
+          //console.log(uploadTask.onProgressUpdate())
+          //success++; //图片上传成功，图片上传成功的变量+1
+          console.log(resp);
+          console.log("上传成功");
+         // this.addTaskDetail(undefined, resp.fileID);
+          //这里可能有BUG，失败也会执行这里,所以这里应该是后台返回过来的状态码为成功时，这里的success才+1
+        },
+        fail: res => {
+          console.log(res)          
+        },
+        complete: res => {
+          console.log(res)
+        }
+      });
+    },
+    voiceToggle() {
+      this.notStartVoice ? this.startVoice() : this.stopVoice();
+      this.notStartVoice = !this.notStartVoice;
+    },
+    startVoice() {
+      const options = {
+        //  duration: 10000, //指定录音的时长，单位 ms
+        sampleRate: 16000, //采样率
+        numberOfChannels: 1, //录音通道数
+        encodeBitRate: 96000, //编码码率
+        format: "mp3", //音频格式，有效值 aac/mp3
+        frameSize: 50 //指定帧大小，单位 KB
+      };
+      //开始录音
+      this.recorderManager.start(options);
+      this.recorderManager.onStart(() => {
+        console.log("recorder start");
+      });
+      //错误回调
+      this.recorderManager.onError(res => {
+        console.log(res);
+      });
+    },
+    //停止录音
+    stopVoice() {
+      this.recorderManager.stop();
+      this.recorderManager.onStop(res => {
+        this.tempVoicePath = res.tempFilePath;
+        console.log("停止录音", res.tempFilePath);
+        this.uploadFile(this.tempVoicePath) 
+        //  const { tempFilePath } = res;
+      });
+    },
+    playVoice() {
+      this.innerAudioContext = wx.createInnerAudioContext();
+      this.innerAudioContext.onError(res => {
+        // 播放音频失败的回调
+      });
+      this.innerAudioContext.src = this.tempVoicePath; // 这里可以是录音的临时路径
+      this.innerAudioContext.play();
+    },
     //多张图片上传
     uploadimg(data) {
       let that = this,
@@ -145,7 +221,7 @@ export default {
           success++; //图片上传成功，图片上传成功的变量+1
           console.log(resp);
           console.log("上传成功");
-          this.addTaskDetail(undefined,resp.fileID);
+          this.addTaskDetail(undefined, resp.fileID);
           //这里可能有BUG，失败也会执行这里,所以这里应该是后台返回过来的状态码为成功时，这里的success才+1
         },
         fail: res => {
@@ -182,11 +258,10 @@ export default {
         success: res => {
           // get temp file URL
           console.log(res.fileList);
-          this.imgInfos = 
-            res.fileList.map(item => ({
-              src: item.tempFileURL,
-              progress: 100
-            })) 
+          this.imgInfos = res.fileList.map(item => ({
+            src: item.tempFileURL,
+            progress: 100
+          }));
         },
         fail: err => {
           console.log(err);
@@ -194,26 +269,26 @@ export default {
       });
     },
     //将文件添加到数据库
-    addTaskDetail(remark ="", photoId ="") {
-      console.log(remark)
-      console.log(this.taskId)
-      const _ = this.forFunDB.command 
-      let data = null
-      if(remark && !photoId){
-         data  = {
-          remark: remark,      
-        }
+    addTaskDetail(remark = "", photoId = "") {
+      console.log(remark);
+      console.log(this.taskId);
+      const _ = this.forFunDB.command;
+      let data = null;
+      if (remark && !photoId) {
+        data = {
+          remark: remark
+        };
       }
-      if(!remark && photoId){
-         data  = {
-          photos: _.push(photoId)    
-        }
+      if (!remark && photoId) {
+        data = {
+          photos: _.push(photoId)
+        };
       }
-      if(remark && photoId){
-         data  = {
+      if (remark && photoId) {
+        data = {
           remark: remark,
-          photos: _.push(photoId)    
-        }
+          photos: _.push(photoId)
+        };
       }
       this.collection.doc(this.taskId).update({
         // data 传入需要局部更新的数据
@@ -225,7 +300,6 @@ export default {
           console.log(res);
         }
       });
-      
     },
     previewImage(url) {
       wx.previewImage({
@@ -236,7 +310,7 @@ export default {
     addRemark() {
       // console.log(event.mp.detail.value);
       // let remark = event.mp.detail.value
-      this.addTaskDetail(this.remark)
+      this.addTaskDetail(this.remark);
     }
   }
 };

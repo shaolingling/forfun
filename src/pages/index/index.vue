@@ -3,7 +3,7 @@
        <a href="/pages/collect/main?id=work" class="counter">工作</a>  
        <a href="/pages/collect/main?id=movie" class="counter">电影</a> 
        <ul>
-          <li v-for = "(item,index) in collectionList" :key = "index"  @click="toList(index)"  >  {{item}}  
+          <li v-for = "(item,index) in collectionList" :key = "index"  @click="toList(index)">{{item}}  
           </li>
        </ul>
       
@@ -41,7 +41,8 @@ export default {
           title: "已完成事情",
           lists: [] 
         }
-      ]
+      ],
+      forFunDB:""
     };
   },
 
@@ -55,6 +56,7 @@ export default {
       this.collectionList.push(this.newVal);
       this.newVal = "";
       this.showInput = false
+      this.forFunDB.collection("12")
     },
     
     bindViewTap() {
@@ -91,10 +93,19 @@ export default {
     //   }
     // }
   },
-
+  
   created() {
     // 调用应用实例的方法获取全局数据
     this.getUserInfo();
+  },
+  onReady(){
+    wx.cloud.init({
+      env: "forfun-3ed578",
+      traceUser: true
+    });
+     this.forFunDB = wx.cloud.database({
+      env: "forfun-3ed578"
+    });
   }
 };
 </script>

@@ -6,10 +6,17 @@
        <input  class="input_val"  v-model.lazy="newVal"  @change="addItem" placeholder="接下去要做什么？"/> 
          <ul class="content">
              <li v-for = "(item ,index) in toDoList" :key ="index">
-                              <div class="check_box" :class="item.done ?'checked':''"   @click="doneChange(item)" v-if="!item.done"></div>
-                               <wux-icon type="ios-checkmark-circle"  @click="doneChange(item)" v-else/>
-                              <div  @click="toTaskDetail(item._id,collectionId)"    :class="item.done ?'line_through':''"          
-                               >{{item.val}}</div>
+                   <div class="check_box"   @click="doneChange(item)"></div>
+                   <div  @click="toTaskDetail(item._id,collectionId)">{{item.val}}</div>
+             </li>                
+        </ul>
+        <div v-if="hideDone" @click="hideDone = false">显示已完成的任务</div>
+        <div v-else @click="hideDone = true">隐藏已完成的任务</div>
+        <div></div>
+        <ul class="content" v-if="!hideDone">
+             <li v-for = "(item ,index) in doneList" :key ="index">
+                    <wux-icon type="ios-checkmark-circle"  @click="doneChange(item)" />
+                     <div  @click="toTaskDetail(item._id,collectionId)"  :class=" line_through">{{item.val}}</div>
              </li>                
         </ul>
     </div>
@@ -24,12 +31,14 @@ export default {
   data() {
     return {
       collection: "", //数据库表名称，如工作，电影
-      collectionId:'',
+      collectionId: "",
       newVal: "",
       index: 0,
       key: "tab1",
       current: "tab1",
       toDoList: [],
+      doneList: [],
+      hideDone:true,
       tabs: [
         {
           key: "tab1",
@@ -52,9 +61,9 @@ export default {
 
   methods: {
     toTaskDetail(id, collectionId) {
-      console.log(id, collectionId)
+      console.log(id, collectionId);
       wx.navigateTo({
-        url: "../task/main?id=" + id +"&collectionId=" + collectionId
+        url: "../task/main?id=" + id + "&collectionId=" + collectionId
       });
     },
     doneChange(item) {
@@ -65,14 +74,19 @@ export default {
           // 表示将 done 字段置为 true
           done: item.done
         },
-        success: function(res) {
+        success: res => {
           console.log(res.data);
+          console.log(item.done)
+          item.done
+            ? this.doneList.push(item) &&
+              this.toDoList.splice(this.toDoList.indexOf(item), 1)
+            : this.toDoList.push(item) &&
+              this.doneList.splice(this.doneList.indexOf(item), 1);
         }
       });
     },
     async addItem() {
       if (!this.newVal.trim()) return;
-      this.toDoList.push({ val: this.newVal, done: false });
       await this.collection.add({
         // data 字段表示需新增的 JSON 数据
         data: {
@@ -85,16 +99,17 @@ export default {
         success: res => {
           // res 是一个对象，其中有 _id 字段标记刚创建的记录的 id
           console.log(res);
+          this.toDoList.push({ val: this.newVal, done: false });
+          this.newVal = "";
         }
       });
-      await this.collection.get({
-        success: res => {
-          // res.data 是一个包含集合中有权限访问的所有记录的数据，不超过 20 条
-          console.log(res.data);
-          this.toDoList = res.data;
-        }
-      });
-      this.newVal = "";
+      // await this.collection.get({
+      //   success: res => {
+      //     // res.data 是一个包含集合中有权限访问的所有记录的数据，不超过 20 条
+      //     console.log(res.data);
+      //     this.toDoList = res.data;
+      //   }
+      // });
     },
 
     getUserInfo() {
@@ -117,7 +132,7 @@ export default {
   },
   onLoad: function(option) {
     console.log(option.id);
-    this.collectionId = option.id
+    this.collectionId = option.id;
     wx.cloud.init({
       env: "forfun-3ed578",
       traceUser: true
@@ -130,7 +145,8 @@ export default {
       success: res => {
         // res.data 是一个包含集合中有权限访问的所有记录的数据，不超过 20 条
         console.log(res.data);
-        this.toDoList = res.data;
+        this.toDoList = res.data.filter(item => !item.done);
+        this.doneList = res.data.filter(item => item.done);
       }
     });
   }
