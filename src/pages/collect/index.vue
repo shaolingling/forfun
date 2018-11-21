@@ -94,7 +94,8 @@ export default {
           val: this.newVal,
           done: false,
           remark: "",
-          photos: []
+          photos: [],
+          voice:""
         },
         success: res => {
           // res 是一个对象，其中有 _id 字段标记刚创建的记录的 id
