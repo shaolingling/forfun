@@ -7,7 +7,7 @@
          <ul class="content">
              <li v-for = "(item ,index) in toDoList" :key ="index">
                    <div class="check_box"   @click="doneChange(item)"></div>
-                   <div  @click="toTaskDetail(item._id,collectionId)">{{item.val}}</div>
+                   <div  @click="toTaskDetail(item._id,collectionId)">{{item.task}}</div>
              </li>                
         </ul>
         <div v-if="hideDone" @click="hideDone = false">显示已完成的任务</div>
@@ -30,8 +30,11 @@ import Vue from "vue";
 export default {
   data() {
     return {
+      forFunDB:'',
       collection: "", //数据库表名称，如工作，电影
-      collectionId: "",
+      taskcollection:'',
+      taskList:"",
+      packageName: "",
       newVal: "",
       index: 0,
       key: "tab1",
@@ -66,52 +69,69 @@ export default {
         url: "../task/main?id=" + id + "&collectionId=" + collectionId
       });
     },
-    doneChange(item) {
-      item.done = !item.done;
-      this.collection.doc(item["_id"]).update({
-        // data 传入需要局部更新的数据
-        data: {
-          // 表示将 done 字段置为 true
-          done: item.done
-        },
-        success: res => {
-          console.log(res.data);
-          console.log(item.done)
-          item.done
-            ? this.doneList.push(item) &&
-              this.toDoList.splice(this.toDoList.indexOf(item), 1)
-            : this.toDoList.push(item) &&
-              this.doneList.splice(this.doneList.indexOf(item), 1);
-        }
-      });
-    },
-    async addItem() {
-      if (!this.newVal.trim()) return;
-      await this.collection.add({
+    addItem() {
+       this.taskcollection.add({
         // data 字段表示需新增的 JSON 数据
         data: {
-          timeStamp: Date.now(),
-          val: this.newVal,
-          done: false,
-          remark: "",
-          photos: [],
-          voice:""
+          packageName: this.packageName,
+          task:this.newVal,
+          done:false
         },
         success: res => {
-          // res 是一个对象，其中有 _id 字段标记刚创建的记录的 id
-          console.log(res);
-          this.toDoList.push({ val: this.newVal, done: false });
-          this.newVal = "";
+           console.log(res.data,"插入成功");
+           this.toDoList.push({"task":this.newVal,"done":false})
+           this.newVal = "";
         }
       });
-      // await this.collection.get({
-      //   success: res => {
-      //     // res.data 是一个包含集合中有权限访问的所有记录的数据，不超过 20 条
-      //     console.log(res.data);
-      //     this.toDoList = res.data;
-      //   }
-      // });
     },
+    doneChange(item) {
+      const _ = this.forFunDB.command;
+      let data={}
+      this.taskcollection.doc(item.task).update({
+        // data 传入需要局部更新的数据
+        data: {
+          done: !item.done
+        },
+        success: res => {
+          console.log(item.done,"更新成功")
+          // item.done
+          //   ? this.doneList.push(item) &&
+          //     this.toDoList.splice(this.toDoList.indexOf(item), 1)
+          //   : this.toDoList.push(item) &&
+          //     this.doneList.splice(this.doneList.indexOf(item), 1);
+        },
+        fail:res => {
+          console.log(res)
+        }
+      });
+    },
+    // async addItem() {
+    //   if (!this.newVal.trim()) return;
+    //   await this.collection.add({
+    //     // data 字段表示需新增的 JSON 数据
+    //     data: {
+    //       timeStamp: Date.now(),
+    //       val: this.newVal,
+    //       done: false,
+    //       remark: "",
+    //       photos: [],
+    //       voice:""
+    //     },
+    //     success: res => {
+    //       // res 是一个对象，其中有 _id 字段标记刚创建的记录的 id
+    //       console.log(res);
+    //       this.toDoList.push({ val: this.newVal, done: false });
+    //       this.newVal = "";
+    //     }
+    //   });
+    //   // await this.collection.get({
+    //   //   success: res => {
+    //   //     // res.data 是一个包含集合中有权限访问的所有记录的数据，不超过 20 条
+    //   //     console.log(res.data);
+    //   //     this.toDoList = res.data;
+    //   //   }
+    //   // });
+    // },
 
     getUserInfo() {
       // 调用登录接口
@@ -132,22 +152,26 @@ export default {
     this.getUserInfo();
   },
   onLoad: function(option) {
-    console.log(option.id);
-    this.collectionId = option.id;
+    console.log(option.packageName);
+    this.packageName = option.packageName;
     wx.cloud.init({
       env: "forfun-3ed578",
       traceUser: true
     });
-    const forFunDB = wx.cloud.database({
+     this.forFunDB = wx.cloud.database({
       env: "forfun-3ed578"
     });
-    this.collection = forFunDB.collection(option.id);
-    this.collection.get({
+    const _ = this.forFunDB.command;
+    this.taskcollection = this.forFunDB.collection("taskList")
+    this.taskcollection.where({
+       packageName: _.eq(this.packageName)
+    }).get({
       success: res => {
         // res.data 是一个包含集合中有权限访问的所有记录的数据，不超过 20 条
-        console.log(res.data);
-        this.toDoList = res.data.filter(item => !item.done);
-        this.doneList = res.data.filter(item => item.done);
+        console.log(res.data,"taskList");
+        let taskList = res.data 
+        this.toDoList = taskList.filter(item => !item.done);
+        this.doneList = taskList.filter(item => item.done);
       }
     });
   }
